@@ -1,0 +1,91 @@
+% Load the Iris dataset
+load fisheriris.mat;
+
+% Preprocess the data
+data = meas(51:end, 3:4); % Use only 2nd and 3rd Iris classes and select only columns 3 and 4
+classes = species(51:end);
+
+% Convert categorical classes to numerical
+classes_num = double(strcmp(classes, 'versicolor'));
+
+% Normalize data
+data = (data - mean(data, 1)) ./ std(data, 1);
+
+% Define the sigmoid function
+sigmoid = @(x) 1./(1 + exp(-x));
+
+% Neural network function
+simple_nn = @(x, w, b) sigmoid(x * w + b);
+
+% Mean squared error function
+mse = @(pred, true) mean((pred - true).^2, 'all');
+
+% Define the initial weights and bias
+W = [1; -1]; % Dimensions: n x 1, where n is the number of features
+b = 0.5;
+
+% Set the learning rate and number of epochs
+eta = 0.1;
+epochs = 10;
+
+% Calculate the predictions and mean-squared error for the initial weights
+pred = simple_nn(data, W, b);
+error = mse(pred, classes_num);
+fprintf('Initial mean-squared error: %.4f\n', error);
+
+% Plot the initial decision boundary
+figure;
+scatter(data(:,1), data(:,2), 50, classes_num, 'filled');
+hold on;
+
+x1 = linspace(min(data(:,1)), max(data(:,1)), 100);
+y1 = -(W(1) * x1 + b) / W(2);
+plot(x1, y1, 'r', 'LineWidth', 2);
+
+xlabel('Feature 1 (Normalized)');
+ylabel('Feature 2 (Normalized)');
+title('Initial Decision Boundary');
+
+% Loop over the epochs
+for epoch = 1:epochs
+    % Initialize the summed gradient
+    gradient_sum = zeros(size(W));
+    
+    % Loop over the patterns
+    for i = 1:length(classes_num)
+        % Calculate the prediction for this pattern
+        x_i = data(i,:);
+        y_i = simple_nn(x_i, W, b);
+
+        % Calculate the error term for this pattern
+        delta_i = (-2 * (classes_num(i) - y_i)) * y_i * (1 - y_i);
+
+        % Calculate the gradient for this pattern
+        gradient_i = delta_i * x_i';
+
+        % Add the gradient to the summed gradient
+        gradient_sum = gradient_sum + gradient_i;
+    end
+
+    % Update the weights and bias
+    W = W - eta * gradient_sum;
+    b = b - eta * sum(-2 * (classes_num - pred) .* pred .* (1 - pred), 'all');
+
+    % Calculate the predictions and mean-squared error for the updated weights
+    pred = simple_nn(data, W, b);
+    error = mse(pred, classes_num);
+    fprintf('Epoch %d: mean-squared error = %.4f\n', epoch, error);
+
+    % Plot the updated decision boundary
+    figure;
+    scatter(data(:,1), data(:,2), 50, classes_num, 'filled');
+    hold on;
+
+    x1 = linspace(min(data(:,1)), max(data(:,1)), 100);
+    y1 = -(W(1) * x1 + b) / W(2);
+    plot(x1, y1, 'b', 'LineWidth', 2);
+
+    xlabel('Feature 1 (Normalized)');
+    ylabel('Feature 2 (Normalized)');
+    title(sprintf('Decision Boundary after Epoch %d', epoch));
+end
